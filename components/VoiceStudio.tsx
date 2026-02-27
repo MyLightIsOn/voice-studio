@@ -125,6 +125,7 @@ export default function VoiceStudio() {
   const mainIsActive = playingVoiceId === selectedVoice.id && (ttsState === 'playing' || ttsState === 'loading');
 
   const codeSnippet = useMemo(() => `// Inworld TTS — ${selectedVoice.name}
+// Docs: https://docs.inworld.ai/docs/quickstart-tts
 const response = await fetch("https://api.inworld.ai/tts/v1/voice", {
   method: "POST",
   headers: {
@@ -133,8 +134,8 @@ const response = await fetch("https://api.inworld.ai/tts/v1/voice", {
   },
   body: JSON.stringify({
     text: ${JSON.stringify(text.slice(0, 80))}${text.length > 80 ? '...' : ''},
-    voiceId: "${selectedVoice.id}",
-    modelId: "inworld-tts-1.5-${model}",
+    voice_id: "${selectedVoice.id}",
+    model_id: "inworld-tts-1.5-${model}",
   }),
 });
 
