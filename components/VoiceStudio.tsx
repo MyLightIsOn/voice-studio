@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import VoiceCard from './VoiceCard';
 import CastRow from './CastRow';
 import Waveform from './Waveform';
@@ -56,19 +56,26 @@ export default function VoiceStudio() {
   const [searchQuery, setSearchQuery] = useState('');
   const [copyLabel, setCopyLabel] = useState('📋 Copy');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const playingVoiceIdRef = useRef<string | null>(null);
 
   const { state: ttsState, isLoading, analyser, play, stop } = useTTS();
 
   const handlePlay = useCallback(async (voiceId: string) => {
-    if (playingVoiceId === voiceId && (ttsState === 'playing' || ttsState === 'loading')) {
+    if (playingVoiceIdRef.current === voiceId && (ttsState === 'playing' || ttsState === 'loading')) {
       stop();
+      playingVoiceIdRef.current = null;
       setPlayingVoiceId(null);
       return;
     }
+    playingVoiceIdRef.current = voiceId;
     setPlayingVoiceId(voiceId);
     await play({ text, voiceId, model, temperature, speakingRate: rate });
-    setPlayingVoiceId(null);
-  }, [playingVoiceId, ttsState, text, model, temperature, rate, play, stop]);
+    // Only clear if this specific invocation is still the active one
+    if (playingVoiceIdRef.current === voiceId) {
+      playingVoiceIdRef.current = null;
+      setPlayingVoiceId(null);
+    }
+  }, [ttsState, text, model, temperature, rate, play, stop]);
 
   const toggleCast = (voice: Voice) => {
     setCastList(prev =>
@@ -91,10 +98,15 @@ export default function VoiceStudio() {
   };
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(codeSnippet).then(() => {
-      setCopyLabel('✓ Copied!');
-      setTimeout(() => setCopyLabel('📋 Copy'), 2000);
-    });
+    navigator.clipboard.writeText(codeSnippet)
+      .then(() => {
+        setCopyLabel('✓ Copied!');
+        setTimeout(() => setCopyLabel('📋 Copy'), 2000);
+      })
+      .catch(() => {
+        setCopyLabel('Copy failed');
+        setTimeout(() => setCopyLabel('📋 Copy'), 2000);
+      });
   };
 
   const filteredVoices = VOICES.filter(v => {
@@ -112,7 +124,7 @@ export default function VoiceStudio() {
   const isVoiceLoading = (voiceId: string) => playingVoiceId === voiceId && ttsState === 'loading';
   const mainIsActive = playingVoiceId === selectedVoice.id && (ttsState === 'playing' || ttsState === 'loading');
 
-  const codeSnippet = `// Inworld TTS — ${selectedVoice.name}
+  const codeSnippet = useMemo(() => `// Inworld TTS — ${selectedVoice.name}
 const response = await fetch("https://api.inworld.ai/tts/v1/voice", {
   method: "POST",
   headers: {
@@ -133,7 +145,7 @@ for (let i = 0; i < audioBytes.length; i++) {
   byteArray[i] = audioBytes.charCodeAt(i);
 }
 const blob = new Blob([byteArray], { type: "audio/wav" });
-new Audio(URL.createObjectURL(blob)).play();`;
+new Audio(URL.createObjectURL(blob)).play();`, [selectedVoice, text, model]);
 
   return (
     <div style={{
@@ -291,6 +303,7 @@ new Audio(URL.createObjectURL(blob)).play();`;
             <button
               onClick={() => handlePlay(selectedVoice.id)}
               disabled={isLoading && playingVoiceId !== selectedVoice.id}
+              aria-label={isVoiceLoading(selectedVoice.id) ? `Generating audio for ${selectedVoice.name}` : isVoicePlaying(selectedVoice.id) ? `Stop ${selectedVoice.name}` : `Synthesize with ${selectedVoice.name}`}
               style={{
                 width: '100%', padding: '14px 0', borderRadius: 12,
                 background: mainIsActive

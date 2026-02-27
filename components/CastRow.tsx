@@ -16,7 +16,11 @@ interface CastRowProps {
 
 export default function CastRow({ voice, index, isPlaying, isLoading, model, analyser, onPlay }: CastRowProps) {
   return (
-    <div style={{
+    <>
+      <style>{`
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+      <div style={{
       display: 'flex', alignItems: 'center', gap: 16,
       padding: '14px 18px', borderRadius: 12,
       backgroundColor: '#13132B',
@@ -44,6 +48,7 @@ export default function CastRow({ voice, index, isPlaying, isLoading, model, ana
       <button
         onClick={() => onPlay(voice.id)}
         disabled={isLoading}
+        aria-label={isLoading ? `Loading ${voice.name}` : isPlaying ? `Stop ${voice.name}` : `Play ${voice.name}`}
         style={{
           width: 40, height: 40, borderRadius: 10,
           backgroundColor: isPlaying ? voice.color : `${voice.color}22`,
@@ -59,5 +64,6 @@ export default function CastRow({ voice, index, isPlaying, isLoading, model, ana
 
       <LatencyBadge model={model} />
     </div>
+    </>
   );
 }

@@ -11,12 +11,12 @@ interface WaveformProps {
 
 export default function Waveform({ isPlaying, color = '#6366F1', height = 48, analyser }: WaveformProps) {
   const barsRef = useRef<HTMLDivElement[]>([]);
-  const rafRef = useRef<number>(0);
+  const rafRef = useRef<number | null>(null);
   const BAR_COUNT = 40;
 
   useEffect(() => {
     if (!isPlaying || !analyser) {
-      cancelAnimationFrame(rafRef.current);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       barsRef.current.forEach((bar, i) => {
         if (bar) {
           const baseH = 8 + Math.sin(i * 0.5) * 6;
@@ -43,7 +43,7 @@ export default function Waveform({ isPlaying, color = '#6366F1', height = 48, an
     }
 
     rafRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
   }, [isPlaying, analyser, height]);
 
   return (
@@ -53,7 +53,7 @@ export default function Waveform({ isPlaying, color = '#6366F1', height = 48, an
         return (
           <div
             key={i}
-            ref={el => { if (el) barsRef.current[i] = el; }}
+            ref={el => { barsRef.current[i] = el as HTMLDivElement; }}
             style={{
               width: 3,
               borderRadius: 2,
