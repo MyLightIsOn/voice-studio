@@ -74,7 +74,3 @@ hooks/
 types/
   index.ts             Shared interfaces (Voice, TTSRequest, PlayState, …)
 ```
-
----
-
-*Lawrence Moore · [thelawrencemoore@gmail.com](mailto:thelawrencemoore@gmail.com)*
