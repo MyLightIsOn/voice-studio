@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { TTSRequest, PlayState } from '@/types';
 
 const WAV_HEADER_BYTES = 44;
@@ -36,24 +36,35 @@ export interface UseTTSReturn {
 
 export function useTTS(): UseTTSReturn {
   const [state, setState] = useState<PlayState>('idle');
+  const [analyserState, setAnalyserState] = useState<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const nextPlayTimeRef = useRef<number>(0);
   const abortRef = useRef<AbortController | null>(null);
   const stateRef = useRef<PlayState>('idle');
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateState = useCallback((s: PlayState) => {
     stateRef.current = s;
     setState(s);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      audioCtxRef.current?.close().catch(() => {});
+    };
+  }, []);
+
   const stop = useCallback(() => {
+    clearTimeout(idleTimerRef.current ?? undefined);
     abortRef.current?.abort();
     if (audioCtxRef.current) {
       audioCtxRef.current.close().catch(() => {});
       audioCtxRef.current = null;
     }
     analyserRef.current = null;
+    setAnalyserState(null);
     updateState('idle');
   }, [updateState]);
 
@@ -81,6 +92,7 @@ export function useTTS(): UseTTSReturn {
 
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       if (!res.body) throw new Error('No response body');
+      if (abort.signal.aborted) return;
 
       const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
       const analyser = ctx.createAnalyser();
@@ -89,6 +101,7 @@ export function useTTS(): UseTTSReturn {
 
       audioCtxRef.current = ctx;
       analyserRef.current = analyser;
+      setAnalyserState(analyser);
       nextPlayTimeRef.current = ctx.currentTime + 0.05;
 
       updateState('playing');
@@ -128,14 +141,17 @@ export function useTTS(): UseTTSReturn {
             source.start(startTime);
             nextPlayTimeRef.current = startTime + audioBuffer.duration;
           } catch {
-            // malformed JSON line — skip
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('TTS: skipping unparseable line:', line.slice(0, 100));
+            }
           }
         }
       }
 
       // Transition to idle after all buffers finish
       const timeUntilEnd = Math.max(0, nextPlayTimeRef.current - ctx.currentTime);
-      setTimeout(() => {
+      clearTimeout(idleTimerRef.current ?? undefined);
+      idleTimerRef.current = setTimeout(() => {
         if (audioCtxRef.current === ctx) {
           updateState('idle');
         }
@@ -152,7 +168,7 @@ export function useTTS(): UseTTSReturn {
     state,
     isPlaying: state === 'playing',
     isLoading: state === 'loading',
-    analyser: analyserRef.current,
+    analyser: analyserState,
     play,
     stop,
   };

@@ -7,7 +7,7 @@ class MockAudioContext {
   destination = {};
   createBuffer = jest.fn().mockReturnValue({
     getChannelData: jest.fn().mockReturnValue(new Float32Array(0)),
-    duration: 0,
+    duration: 0.1,
     numberOfChannels: 1,
     length: 0,
     sampleRate: 24000,

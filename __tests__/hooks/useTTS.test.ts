@@ -76,6 +76,7 @@ describe('useTTS', () => {
     });
 
     expect(result.current.state).toBe('playing');
+    expect(result.current.analyser).not.toBeNull();
     expect(global.fetch).toHaveBeenCalledWith('/api/tts', expect.objectContaining({
       method: 'POST',
       body: expect.stringContaining('"voiceId":"Ashley"'),
@@ -106,6 +107,28 @@ describe('useTTS', () => {
     });
 
     expect(result.current.state).toBe('error');
+  });
+
+  it('returns to idle after playback ends', async () => {
+    const chunk = makeFakeWavChunk();
+    (global.fetch as jest.Mock).mockResolvedValue(
+      new Response(makeNDJSONStream([chunk]), { status: 200 })
+    );
+
+    const { result } = renderHook(() => useTTS());
+
+    await act(async () => {
+      await result.current.play(request);
+    });
+
+    expect(result.current.state).toBe('playing');
+
+    // Advance timers past the playback duration
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(result.current.state).toBe('idle');
   });
 
   it('stop() transitions to idle', async () => {
