@@ -15,12 +15,14 @@ class MockAudioContext {
   createBufferSource = jest.fn().mockReturnValue({
     buffer: null,
     connect: jest.fn(),
+    disconnect: jest.fn(),
     start: jest.fn(),
     stop: jest.fn(),
     onended: null,
   });
   createAnalyser = jest.fn().mockReturnValue({
     connect: jest.fn(),
+    disconnect: jest.fn(),
     getByteFrequencyData: jest.fn(),
     frequencyBinCount: 128,
     fftSize: 256,
