@@ -59,6 +59,11 @@ describe('POST /api/tts', () => {
         body: expect.stringContaining('"voice_id":"Ashley"'),
       })
     );
+
+    // Assert temperature and speaking_rate are forwarded
+    const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(calledBody.temperature).toBe(0.8);
+    expect(calledBody.speaking_rate).toBe(1.0);
   });
 
   it('returns 500 if Inworld API fails', async () => {
@@ -71,5 +76,16 @@ describe('POST /api/tts', () => {
 
     const res = await POST(req);
     expect(res.status).toBe(500);
+  });
+
+  it('returns 400 if body is not valid JSON', async () => {
+    const req = new NextRequest('http://localhost/api/tts', {
+      method: 'POST',
+      body: 'not json',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
   });
 });
